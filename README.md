@@ -1,9 +1,7 @@
-# FisheyeAgent
+# Atlassian Fisheye Agent
 
-Welcome to your new agent gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/huginn_fisheye_agent`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
-
+ Trigger Atlassian Fisheye to index a repository (for example, after new commits are pushed)
+        
 ## Installation
 
 This gem is run as part of the [Huginn](https://github.com/huginn/huginn) project. If you haven't already, follow the [Getting Started](https://github.com/huginn/huginn#getting-started) instructions there.
@@ -22,7 +20,11 @@ And then execute:
 
 ## Usage
 
-TODO: Write usage instructions here
+ `fisheye_url` is the address of the Fisheye Instance you want to trigger
+  `fisheye_token` is the Rest API Token for the Fisheye Instance (Found under Admin->Security Settings->Authentication in Fisheye)
+  `fisheye_repository` is the repository you want to trigger the index on
+  If `merge_event` is true, then the response is merged with the original payload
+
 
 ## Development
 

@@ -1,3 +1,5 @@
+require 'addressable/uri'
+
 module Agents
   class FisheyeAgent < Agent
     include WebRequestConcern
@@ -12,9 +14,23 @@ module Agents
 
     def default_options
       {
+        'fisheye_url' => 'https://fisheye.example.com',
+        'fisheye_token' => 'XXX',
+        'fisheye_repository' => 'XXX-XXX',
+        'merge_event' => 'false'
       }
     end
 
+    
+    SCHEMES = %w(http https)
+    
+    def valid_url?(url)
+      parsed = Addressable::URI.parse(url) or return false
+      SCHEMES.include?(parsed.scheme)
+    rescue Addressable::URI::InvalidURIError
+      false
+    end
+    
     def validate_options
     end
 
@@ -23,25 +39,37 @@ module Agents
       
       if interpolated['expected_receive_period_in_days'].present?
         return false unless last_receive_at && last_receive_at > interpolated['expected_receive_period_in_days'].to_i.days.ago
+      end
     end
 
-#    def check
-#    end
+    def check
+      receive(interpolated)
+    end
 
     def receive(incoming_events)
-      fisheye_url = interpolated(event.payload)[:fisheye_url] + 'rest-service-fecru/admin/repositories/#{event.payload[:fisheye_repository]}/incremental-index'
-      headers['Content-Type'] = 'application/json; charset=utf-8'
+      incoming_events.each do |event|  
+        handle(event)
       end
-      headers['X-Api-Key'] = event.payload[:api_key]
-      body = ''
-      response = faraday.run_request(method.to_sym, url, body, headers)
-      
-
-      if boolify(interpolated['emit_events'])
-        new_event = interpolated['output_mode'].to_s == 'merge' ? event.payload.dup : {}
-        create_event payload: new_event.merge(
+    end
+    def handle(event)
+      fisheye_url = interpolated(event)["fisheye_url"] + '/rest-service-fecru/admin/repositories/'+ interpolated(event)["fisheye_repository"] + '/incremental-index'
+      if not valid_url?(fisheye_url)
+        log("Invalid URL #{fisheye_url}")
+        return
+      end
+        
+      fisheye_headers = {'Content-Type'  => 'application/json; charset=utf-8', 'X-Api-Key' => interpolated(event)["fisheye_token"] }
+      fisheye_body = ''
+      begin
+        response = faraday.run_request(:put, fisheye_url, fisheye_body, fisheye_headers)
+      rescue  => e
+        warn pp e
+      end
+      log("Response" +  pp(response))
+      if boolify(interpolated['merge_event'])
+        create_event payload: event.payload.merge(
           body: response.body,
-          headers: normalize_response_headers(response.headers),
+          headers: response.headers,
           status: response.status
         )
       end
